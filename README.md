@@ -13,9 +13,14 @@ Two studies, both pre-registered before any output existed:
 | study | what | status |
 |---|---|---|
 | **IA-1** ([PREREGISTRATION.md](PREREGISTRATION.md), [ADDENDUM-1.md](ADDENDUM-1.md)) | retrospective: every 2025-2026 first national record in GBIF, with a hand-checked sample of 60 | run queued, results pending |
-| **IA-2** ([IA2-PREREG.md](IA2-PREREG.md)) | prospective: a weekly watch that logs the date it first sees each new pair, then measures how many were real and how many came before official reports | weekly runs start with a baseline |
+| **IA-2** ([IA2-PREREG.md](IA2-PREREG.md), [IA2-ADDENDUM-1.md](IA2-ADDENDUM-1.md), [IA2-ADDENDUM-2.md](IA2-ADDENDUM-2.md)) | prospective: a weekly watch that logs the date it first sees each new pair, then measures how many were real and how many came before official reports | baseline run queued; weekly run 1 is ISO week 2026-W48 at the earliest |
 
-A hand pilot on six well-known invasive insects is in [pilot/](pilot/PILOT-2026-11-17.md).
+Three hand pilots (hand-picked species, not the registered sample) are in
+[pilot/](pilot/): six invasive insects, six more insects plus a crayfish and a mosquito,
+and six invasive plants. Across 24 comparable strong pairs: 3 native, 8 already
+reported, 8 doubtful and 5 plausible new arrivals. Two of the plausible ones (the Asian
+hornet in Denmark and Poland) were confirmed officially 12 and about 20 days after the
+record date.
 
 ## Why
 
@@ -33,16 +38,29 @@ importantly, **measures how many of its flags survive a hand check**.
 - Atom: [watch/atom.xml](https://raw.githubusercontent.com/munimtechnologies/invasive-arrivals/main/watch/atom.xml)
 - JSON: [watch/feed.json](https://raw.githubusercontent.com/munimtechnologies/invasive-arrivals/main/watch/feed.json)
 - Every new pair ever seen, append-only: `watch/first_seen.csv`; weekly reports in
-  `watch/weeks/`; run log in `watch/runs.csv`.
+  `watch/weeks/`; run log in `watch/runs.csv`; look-alike labels in `watch/lookalikes.csv`.
 
-Each week, `.github/workflows/watch.yml` asks GBIF which countries hold records of every
-target species. A country the watch has never seen for that species, and where GRIIS
-doesn't list it, is a new pair. Its records decide its kind: **arrival** (all records
-recent, at least one with a photo or specimen), weak, excluded (captive, garden, bad
-coordinates), historical (an old record newly digitised) or none. Arrivals also get a
-distance band: **front** (another country has records within 300 km), **mid** (within
-1,000 km) or **jump**. Every item is a candidate for an expert's check, not a confirmed
-arrival.
+These files appear after the baseline run. Each week, watch.py asks GBIF which countries
+hold records of every target species. It runs as a GitHub Actions workflow once that file
+is added, and until then as a sealed compute job (see IA2-ADDENDUM-1.md). A country the
+watch has never seen for that species, and where GRIIS doesn't list it, is a new pair.
+Its records decide its kind: **arrival** (all records recent, at least one with a photo or
+specimen), weak, excluded (captive, garden, bad coordinates), historical (an old record
+newly digitised) or none. Arrivals also get a distance band: **front** (another country
+has records within 300 km), **mid** (within 1,000 km) or **jump**. Every item is a
+candidate for an expert's check, not a confirmed arrival.
+
+### Look-alike risk (IA2-ADDENDUM-2)
+
+The commonest false flag in the pilots was a photo look-alike: a mosquito, ant or beetle
+that the observer's photo app suggested, with one other person agreeing. In the same week
+a pair is flagged, `lookalike.py` checks two things. First, whether a species that
+iNaturalist users often confuse with the target already has GBIF records in that
+country. Second, whether every iNaturalist record behind the flag is "thin": the observer
+used the computer-vision suggestion and at most one other person agreed. Both together
+give **risk = high**. Whether high-risk flags really are misidentifications more often is
+pre-registered as hypothesis W5. Until it is graded, the label is only a column and does
+not change the feed.
 
 Agents can use [SKILL.md](SKILL.md) to read the feed or run a watch for their own list.
 
@@ -62,14 +80,16 @@ Agents can use [SKILL.md](SKILL.md) to read the feed or run a watch for their ow
 ## Run it
 
 ```
-python -m unittest -v test_arrivals test_watch       # offline tests
+python -m unittest -v test_arrivals test_watch test_lookalike   # offline tests
 python arrivals.py --out-dir out                     # IA-1 screen, about 1-2 hours
 python watch.py --state-dir mywatch --targets my_species.csv   # your own weekly watch
 python watch.py --state-dir watch --targets watch/targets.csv --build-targets  # full GRIIS list
+python lookalike.py --state-dir watch --only-week    # look-alike labels for this week's arrivals
 ```
 
-Python 3.10+ with the standard library only. The clients keep to about 4-5 requests a
-second and identify themselves in their User-Agent.
+Python 3.10+ with the standard library only. The GBIF clients keep to about 4-5 requests
+a second, lookalike.py keeps to about one iNaturalist request a second, and all of them
+identify themselves in their User-Agent.
 
 ## IA-1 outputs (in `--out-dir`)
 
@@ -92,7 +112,8 @@ rounded to 0.1 degree.
 - GBIF reflects where people look. Countries with few records produce more false
   "firsts", and real arrivals that nobody photographed are invisible.
 - GRIIS checklists differ in age and completeness, so a species missing from a country's
-  list may simply not have been added yet.
+  list may simply not have been added yet. For plants, the pilots found national legal
+  lists in the local language that never reached GBIF or GRIIS.
 - A record's event date can be long before it reaches GBIF. That is why IA-2 measures
   lead time from the date the watch first saw a pair.
 
@@ -100,4 +121,5 @@ rounded to 0.1 degree.
 
 GBIF.org occurrence data via the GBIF API (each record keeps its own licence, from CC0
 to CC BY-NC); GRIIS checklists by the IUCN SSC Invasive Species Specialist Group (ISSG),
-CC BY 4.0.
+CC BY 4.0. Look-alike tallies and identification counts from the public iNaturalist API
+(api.inaturalist.org); only taxon names, counts and observation numbers are stored.
