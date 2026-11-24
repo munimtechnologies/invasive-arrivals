@@ -12,7 +12,7 @@ Two studies, both pre-registered before any output existed:
 
 | study | what | status |
 |---|---|---|
-| **IA-1** ([PREREGISTRATION.md](PREREGISTRATION.md), [ADDENDUM-1.md](ADDENDUM-1.md)) | retrospective: every 2025-2026 first national record in GBIF, with a hand-checked sample of 60 | run queued, results pending |
+| **IA-1** ([PREREGISTRATION.md](PREREGISTRATION.md), [ADDENDUM-1.md](ADDENDUM-1.md), [IA1-GRADING-RULES.md](IA1-GRADING-RULES.md)) | retrospective: every 2025-2026 first national record in GBIF, with a hand-checked sample of 60 | run queued, results pending; the grader (`grade_ia1.py`) is published in advance |
 | **IA-2** ([IA2-PREREG.md](IA2-PREREG.md), [IA2-ADDENDUM-1.md](IA2-ADDENDUM-1.md), [IA2-ADDENDUM-2.md](IA2-ADDENDUM-2.md)) | prospective: a weekly watch that logs the date it first sees each new pair, then measures how many were real and how many came before official reports | baseline run queued; weekly run 1 is ISO week 2026-W48 at the earliest |
 
 Three hand pilots (hand-picked species, not the registered sample) are in
@@ -76,12 +76,19 @@ Agents can use [SKILL.md](SKILL.md) to read the feed or run a watch for their ow
    well-georeferenced record. A pair is *strong* if a record has a photo or is a
    specimen.
 5. Draw a fixed random sample of 60 strong pairs for hand verification.
+6. Grade it with `grade_ia1.py`, written and tested before any output existed
+   ([IA1-GRADING-RULES.md](IA1-GRADING-RULES.md)). It reads H1-H3 off the output,
+   cross-checks summary.json against candidates.csv, re-draws the 60-pair sample to show
+   it reproduces, and grades V1-V2 from the hand-verification sheet.
 
 ## Run it
 
 ```
-python -m unittest -v test_arrivals test_watch test_lookalike   # offline tests
+python -m unittest -v test_arrivals test_watch test_lookalike test_grade_ia1   # offline tests
 python arrivals.py --out-dir out                     # IA-1 screen, about 1-2 hours
+python grade_ia1.py --run-dir out                    # grade H1-H3, check the sample
+python grade_ia1.py --run-dir out --make-sheet verification.csv   # blank hand-check sheet
+python grade_ia1.py --run-dir out --verification verification.csv --json-out grading.json
 python watch.py --state-dir mywatch --targets my_species.csv   # your own weekly watch
 python watch.py --state-dir watch --targets watch/targets.csv --build-targets  # full GRIIS list
 python lookalike.py --state-dir watch --only-week    # look-alike labels for this week's arrivals
